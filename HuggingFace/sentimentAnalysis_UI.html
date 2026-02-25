@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sentiment Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --border: #1e1e2e;
+      --accent-pos: #00ffaa;
+      --accent-neg: #ff3d6e;
+      --accent-neu: #7b61ff;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --card: #16161f;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.4;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glow orb */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(123,97,255,0.15) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* Header */
+    header {
+      margin-bottom: 52px;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .label-tag {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-neu);
+      border: 1px solid var(--accent-neu);
+      padding: 4px 10px;
+      border-radius: 2px;
+      margin-bottom: 20px;
+      opacity: 0.8;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, var(--accent-pos), var(--accent-neu));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px;
+      margin-bottom: 28px;
+      animation: fadeDown 0.6s 0.1s ease both;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    .tab.active {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    /* Input panels */
+    .panel { display: none; animation: fadeIn 0.3s ease both; }
+    .panel.active { display: block; }
+
+    .input-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .input-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+
+    textarea {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      padding: 20px;
+      resize: none;
+      min-height: 130px;
+    }
+
+    textarea::placeholder { color: var(--muted); }
+
+    .char-count {
+      padding: 8px 16px;
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      text-align: right;
+    }
+
+    /* Batch textarea */
+    #batchInput {
+      min-height: 160px;
+    }
+
+    .batch-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border-left: 2px solid var(--accent-neu);
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* Analyze button */
+    .btn {
+      width: 100%;
+      padding: 16px;
+      background: transparent;
+      border: 1px solid var(--accent-neu);
+      color: var(--accent-neu);
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent-neu);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .btn:hover::before { opacity: 0.08; }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn.loading { pointer-events: none; }
+    .btn.loading .btn-text { opacity: 0; }
+    .btn.loading::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' stroke='%237b61ff' stroke-width='2' fill='none' stroke-dasharray='31.4' stroke-dashoffset='10'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='0.8s' repeatCount='indefinite'/%3E%3C/circle%3E%3C/svg%3E") center/20px no-repeat;
+    }
+
+    /* Result */
+    .result-section { animation: fadeUp 0.4s ease both; }
+
+    .result-header {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* Single result */
+    .result-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--result-color, var(--accent-neu));
+      transition: background 0.4s;
+    }
+
+    .sentiment-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--result-color, var(--text));
+      margin-bottom: 16px;
+      transition: color 0.4s;
+    }
+
+    .sentiment-icon { font-size: 2rem; }
+
+    .result-text {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 20px;
+      padding: 12px;
+      background: var(--surface);
+      border-radius: 4px;
+      border-left: 2px solid var(--border);
+    }
+
+    /* Score bar */
+    .score-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .score-label { color: var(--muted); }
+    .score-value { color: var(--result-color, var(--text)); font-weight: 500; }
+
+    .score-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      background: var(--result-color, var(--accent-neu));
+      border-radius: 2px;
+      transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 0%;
+    }
+
+    /* Batch results */
+    .batch-results { display: flex; flex-direction: column; gap: 10px; }
+
+    .batch-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      animation: fadeUp 0.3s ease both;
+      border-left: 3px solid var(--item-color, var(--border));
+    }
+
+    .batch-text {
+      font-size: 13px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .batch-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--item-color, var(--muted));
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .batch-score {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* Error */
+    .error-msg {
+      background: rgba(255,61,110,0.08);
+      border: 1px solid rgba(255,61,110,0.3);
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--accent-neg);
+    }
+
+    /* API status */
+    .api-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      animation: fadeDown 0.6s 0.2s ease both;
+    }
+
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+    .status-dot.online { background: var(--accent-pos); box-shadow: 0 0 6px var(--accent-pos); }
+    .status-dot.offline { background: var(--accent-neg); }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="label-tag">DistilBERT · SST-2</div>
+      <h1>Sentiment<br/><span>Analyzer</span></h1>
+      <p class="subtitle">Powered by HuggingFace + FastAPI. By VIKRAM</p>
+    </header>
+
+    <div class="api-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Checking API...</span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('single', this)">Single Text</button>
+      <button class="tab" onclick="switchTab('batch', this)">Batch Analysis</button>
+    </div>
+
+    <!-- Single Panel -->
+    <div class="panel active" id="panel-single">
+      <div class="input-card">
+        <div class="input-header">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <span style="margin-left:6px;">input.txt</span>
+        </div>
+        <textarea id="singleInput" placeholder="Type something... e.g. 'I absolutely loved this product!'" maxlength="1000" oninput="updateCount()"></textarea>
+        <div class="char-count"><span id="charCount">0</span> / 1000</div>
+      </div>
+
+      <button class="btn" id="singleBtn" onclick="analyzeSingle()">
+        <span class="btn-text">→ Analyze Sentiment</span>
+      </button>
+
+      <div id="singleResult"></div>
+    </div>
+
+    <!-- Batch Panel -->
+    <div class="panel" id="panel-batch">
+      <p class="batch-hint">Enter one sentence per line. Max 32 texts.</p>
+      <div class="input-card">
+        <div class="input-header">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <span style="margin-left:6px;">batch.txt</span>
+        </div>
+        <textarea id="batchInput" placeholder="I love this!&#10;This is terrible.&#10;It was okay I guess."></textarea>
+      </div>
+
+      <button class="btn" id="batchBtn" onclick="analyzeBatch()">
+        <span class="btn-text">→ Analyze All</span>
+      </button>
+
+      <div id="batchResult"></div>
+    </div>
+
+  </div>
+
+  <script>
+    const API = 'http://localhost:8000';
+
+    // Check API health
+    async function checkStatus() {
+      const dot = document.getElementById('statusDot');
+      const txt = document.getElementById('statusText');
+      try {
+        const res = await fetch(`${API}/`);
+        if (res.ok) {
+          dot.className = 'status-dot online';
+          txt.textContent = 'API online';
+        } else throw new Error();
+      } catch {
+        dot.className = 'status-dot offline';
+        txt.textContent = 'API offline — start uvicorn';
+      }
+    }
+
+    checkStatus();
+
+    // Tab switching
+    function switchTab(name, el) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById(`panel-${name}`).classList.add('active');
+    }
+
+    // Char count
+    function updateCount() {
+      document.getElementById('charCount').textContent =
+        document.getElementById('singleInput').value.length;
+    }
+
+    // Color mapping
+    function getColor(label) {
+      return label === 'POSITIVE' ? 'var(--accent-pos)' : 'var(--accent-neg)';
+    }
+
+    function getIcon(label) {
+      return label === 'POSITIVE' ? '▲' : '▼';
+    }
+
+    // Single analyze
+    async function analyzeSingle() {
+      const text = document.getElementById('singleInput').value.trim();
+      if (!text) return;
+
+      const btn = document.getElementById('singleBtn');
+      btn.classList.add('loading');
+
+      try {
+        const res = await fetch(`${API}/sentiment/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error');
+
+        renderSingle(data);
+      } catch (e) {
+        document.getElementById('singleResult').innerHTML =
+          `<div class="error-msg">✗ ${e.message}</div>`;
+      } finally {
+        btn.classList.remove('loading');
+      }
+    }
+
+    function renderSingle(data) {
+      const color = getColor(data.label);
+      const pct = Math.round(data.score * 100);
+
+      document.getElementById('singleResult').innerHTML = `
+        <div class="result-section">
+          <div class="result-header">— Result</div>
+          <div class="result-card" style="--result-color: ${color}">
+            <div class="sentiment-badge">
+              <span class="sentiment-icon">${getIcon(data.label)}</span>
+              ${data.label}
+            </div>
+            <div class="result-text">"${data.text}"</div>
+            <div class="score-row">
+              <span class="score-label">Confidence</span>
+              <span class="score-value">${pct}%</span>
+            </div>
+            <div class="score-bar">
+              <div class="score-fill" id="scoreFill"></div>
+            </div>
+          </div>
+        </div>`;
+
+      setTimeout(() => {
+        const fill = document.getElementById('scoreFill');
+        if (fill) fill.style.width = pct + '%';
+      }, 50);
+    }
+
+    // Batch analyze
+    async function analyzeBatch() {
+      const raw = document.getElementById('batchInput').value;
+      const texts = raw.split('\n').map(t => t.trim()).filter(Boolean);
+
+      if (!texts.length) return;
+      if (texts.length > 32) {
+        document.getElementById('batchResult').innerHTML =
+          `<div class="error-msg">✗ Max 32 texts allowed</div>`;
+        return;
+      }
+
+      const btn = document.getElementById('batchBtn');
+      btn.classList.add('loading');
+
+      try {
+        const res = await fetch(`${API}/sentiment/batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texts })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error');
+
+        renderBatch(data);
+      } catch (e) {
+        document.getElementById('batchResult').innerHTML =
+          `<div class="error-msg">✗ ${e.message}</div>`;
+      } finally {
+        btn.classList.remove('loading');
+      }
+    }
+
+    function renderBatch(data) {
+      const items = data.results.map((r, i) => `
+        <div class="batch-item" style="--item-color: ${getColor(r.label)}; animation-delay: ${i * 0.05}s">
+          <span class="batch-text">"${r.text}"</span>
+          <span class="batch-label">${getIcon(r.label)} ${r.label}</span>
+          <span class="batch-score">${Math.round(r.score * 100)}%</span>
+        </div>`).join('');
+
+      document.getElementById('batchResult').innerHTML = `
+        <div class="result-section">
+          <div class="result-header">— ${data.count} Results</div>
+          <div class="batch-results">${items}</div>
+        </div>`;
+    }
+  </script>
+</body>
+</html>
