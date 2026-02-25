@@ -156,6 +156,9 @@ Response:
 - Batch processing — HuggingFace handles lists natively
 
 ---
+## Demo
+
+![Sentiment Analyzer Demo](SentimentAnalyzer_Demo.gif)
 
 ## Author
 
